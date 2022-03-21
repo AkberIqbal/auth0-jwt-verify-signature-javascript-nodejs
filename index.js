@@ -14,31 +14,15 @@ const verifyJWT = async (token, verifyURL) => {
 
     return new Promise(async (resolve, reject) => {
         const result = jwt.decode(token, { complete: true });
-        console.log('TODO: result:', result);
 
-        // 1. Check the signing algorithm
-        // const signingAlgorithm = result?.header?.alg;
+        const domainFromToken = result?.payload?.iss;
 
-        // 2. Confirm that the token is correctly signed using the proper key
-        // A. Take the original Base64url-encoded Header and original Base64url-encoded Payload segments (Base64url-encoded Header + "." + Base64url-encoded Payload), and hash them with SHA-256.
+        const signatureUrl = verifyURL ? verifyURL : `${domainFromToken}.well-known/jwks.json`;
 
-        // const segments = token.split(".");
-        // const base64urlEncodedHeader = segments[0];
-        // const base64urlEncodedPayload = segments[1];
-        // console.log('one (base64urlEncodedHeader):', base64urlEncodedHeader);
-        // console.log('two (base64urlEncodedPayload):', base64urlEncodedPayload);
-
-        // const digest = `${base64urlEncodedHeader}.${base64urlEncodedPayload}`;
-        // console.log('digest:', digest);
-
-        // const hashed = createHash('sha256').update(digest).digest('hex');
-        // console.log('hashed:', hashed);
-
-        const jwksResponse = await axios.get(verifyURL);
+        const jwksResponse = await axios.get(signatureUrl);
 
         const jwks = jwksResponse?.data?.keys;
-        console.log('jwks:', jwks.length);
-        console.log('trying to find:', result?.header?.kid);
+        console.log('# of JWKS:', jwks.length, ' -trying to find:', result?.header?.kid);
 
         const relevantKey = jwks.filter(jk => jk.kid === result?.header?.kid);
         console.log('relevantKey:', relevantKey);
@@ -55,30 +39,26 @@ const verifyJWT = async (token, verifyURL) => {
                 });
 
         if (joseResult && Object.keys(joseResult).length > 0) {
-            console.log('joseResult:', joseResult);
             console.log('Object.keys(joseResult):', Object.keys(joseResult));
+            // console.log('joseResult:', joseResult);
             resolve('ok');
         }
-
     })
 }
 
 app.get('/verify', async (req, res) => {
     const { headers, body } = req;
-    console.log('headers:', headers);
-    console.log('body:', body);
 
-    const result = await verifyJWT(headers?.authorization, headers?.verifyurl).catch(exp => {
-        console.log('TODO: rejection !!!:', exp);
-        res.send('got em all...');
-        res.end();
-    });
+    const result = await verifyJWT(headers?.authorization, headers?.verifyurl)
+        .catch(exp => {
+            console.log('rejection !!!:', exp);
+            res.send(`token/signature not verified: ${exp}`);
+        });
     if (result) {
-        console.log('here 1 !!')
-        res.send('got em all...');
+        console.log('token is verified');
+        res.send('token & signature is verified');
     }
 });
-
 
 app.listen(port, () => {
     console.log(`Example app listening on port ${port}`)
