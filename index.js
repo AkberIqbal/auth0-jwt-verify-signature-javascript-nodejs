@@ -10,6 +10,13 @@ app.get('/', (req, res) => {
     res.send('Hello World!')
 });
 
+/**
+ * We verify RS256 signature for an Auth0 token - instead of the old HS256
+ * for more info: check the readme
+ * 
+ * token    : the token that you got from Auth0 and you want to verify
+ * verifyURL: your domain in Auth0, this is optional parameter now because we can get the domain ourselves
+ */
 const verifyJWT = async (token, verifyURL) => {
 
     return new Promise(async (resolve, reject) => {
@@ -40,6 +47,7 @@ const verifyJWT = async (token, verifyURL) => {
 
         if (joseResult && Object.keys(joseResult).length > 0) {
             console.log('Object.keys(joseResult):', Object.keys(joseResult));
+            // uncomment to take a closer look
             // console.log('joseResult:', joseResult);
             resolve('ok');
         }
