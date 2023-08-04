@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
-var jose = require('node-jose');
+// var jose = require('node-jose');
+const jose = require('jose');
 
 const express = require('express');
 const app = express()
@@ -26,27 +27,29 @@ const verifyJWT = async (token, verifyURL) => {
 
         const signatureUrl = verifyURL ? verifyURL : `${domainFromToken}.well-known/jwks.json`;
 
-        const jwksResponse = await axios.get(signatureUrl);
+        const jwksResponse = await axios.get(signatureUrl).catch((exp)=>{
+            console.log('Error getting jwkResponse:', exp);
+            reject(false)
+        });
 
         const jwks = jwksResponse?.data?.keys;
         console.log('# of JWKS:', jwks.length, ' -trying to find:', result?.header?.kid);
 
-        const relevantKey = jwks.filter(jk => jk.kid === result?.header?.kid);
+        const relevantKey = jwks.filter(jk => jk.kid === result?.header?.kid)[0];
         console.log('relevantKey:', relevantKey);
 
-        let key = await jose.JWK.asKey(relevantKey[0]);
+        const algoForImport = selectedKey.alg
+        const publicKey = await jose.importJWK(relevantKey, algoForImport);
 
-        const joseResult =
-            await jose.JWS
-                .createVerify(key)
-                .verify(token)
-                .catch(exp => {
-                    console.log('exp:', exp);
-                    reject(exp);
-                });
+         const { payload, protectedHeader }  = await jose.jwtVerify(token, publicKey, {
+                iss: 'issuer, get this from decoded token, or the issuer you expect',
+            }).catch(exp => {
+                console.log('exp:', exp);
+                reject(exp);
+            });
 
-        if (joseResult && Object.keys(joseResult).length > 0) {
-            console.log('Object.keys(joseResult):', Object.keys(joseResult));
+        if (payload && Object.keys(payload).length > 0) {
+            console.log('Object.keys(payload):', Object.keys(payload));
             // uncomment to take a closer look
             // console.log('joseResult:', joseResult);
             resolve('ok');
