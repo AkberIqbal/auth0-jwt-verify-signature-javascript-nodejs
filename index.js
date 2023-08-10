@@ -23,6 +23,9 @@ const verifyJWT = async (token, verifyURL) => {
     return new Promise(async (resolve, reject) => {
         const result = jwt.decode(token, { complete: true });
 
+        // DANGER: your server should have the domain of the authentication token...
+        // if the token is from a bad-actor-authentication-server... we don't want to check it against it !!!
+        // perhaps this could be a point of checking and exiting early if this domain is different to our domain
         const domainFromToken = result?.payload?.iss;
 
         const signatureUrl = verifyURL ? verifyURL : `${domainFromToken}.well-known/jwks.json`;
